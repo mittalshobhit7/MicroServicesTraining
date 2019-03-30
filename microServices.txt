@@ -1,4 +1,4 @@
-Micro Services  (28 Mar 2019)
+Micro Services  (28 Mar 2019) My notes:
 ------------------
 view , Controller , service , DAO (horizontal architecture)
 
