@@ -1,0 +1,393 @@
+Micro Services  (28 Mar 2019)
+------------------
+view , Controller , service , DAO (horizontal architecture)
+
+Factory design pattern
+Singleton design pattern
+
+data transformation from layer to layer has to be done using DTO - data transfer object
+Drawback with the above architecture:
+----------------
+if there are 10 modules (account,inventory...) - we have to deploye all modules togeather. If any one fails entire project will stop.
+We cant scale seperate module , all project has to be scaled up same time.
+
+how to overcome:
+------------
+for all modules create seperate projets and deploy independently
+
+But,
+ A)interactions b/w modules is easy if all in same project,if in independent its complex to communicate b/w modules.
+ B)Every module needs resources , that means we have to increase infrasctructure.
+
+ But benifits with independent projects:
+ C)multiple users can use multiple modules when ever needed.User performace increases (vertical architecture)
+ 
+ These independent small projects are called micro services. But all A B C exists.
+ 
+ What can be solutions?
+ As its difficult to maintain n multiple projects.
+ Netflex intoduced an architecture when helps to maintain all of the independent module projects.
+ 
+ First register your registry of one small project. Who will provide registry. Eureka company provided this registry.
+ 
+ Now user request will come to registry and Netflex architecture helps in this process.
+ user request is checked in registry and Eureka will go and returns your response.
+ 
+ But for same service , if we create multiple instances....that time how Eureka will balance?
+ In this case Eureka will go to RIBBON , which will do load balance.
+ okay....But before Ribbon going to get responce ,it needes authentication and routing
+For this pursose of routing to authentication page/from authentication/to service- ZUUL comes into picture .
+If any issues comes on service level/project , who will manage - HYSTRIX (CIRCUT BREAKER )
+HYSTRIX will see if one service is not giving response , will redirect you to other web/service and makes our things happen.
+
+
+Managing all this infra , DOCKER came in.
+DOCKER is a container which will have many small small containers. DOCKER will deploy all containers togeathers.
+
+
+code -> GIT/SVN --> has to go to DOCKER.  We are using JENKINS to do this. 
+JENKINS will take from GIT and place to DOCKER.
+
+From DOCKER actual deployement is done to AWS
+
+How to store services when user want to access after some time.
+Maintain SESSIONS and CACHE. Use REDIS to do this.
+
+If 2 services want to communicat, how?? KAFKA/REDIFF
+ 
+ 
+ step 1 - how to create services
+ 2. how to register in Eureka , establishing connections
+ 3.multiple instances - how to balance using Ribbon
+4.how to provide routing - zull
+5.how to manage using HYSTRIX
+6.Entire modules working
+7.how to pass entire to DOCKER
+
+All these flow and components usage dependes on project requirement.
+if no need of instances - we can skip RIBBON.
+No need of cache? SKip REDIS.
+
+pom.xml
+property file
+main
+
+application.properties:
+server.port = 10000
+
+
+1.producer->application.properties-> add
+eureka.client.serviceUrl.defaultZone=http://localhost:8090/eureka
+2.create bootstrap.properties in producers and following
+spring.application.name=employee-producer
+3.open main file and add following annotation 
+@EnableDiscoveryClient
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+4.in pom.xml add
+<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-eureka-server</artifactId>
+			<version>1.4.6.RELEASE</version>
+		</dependency> 
+
+		
+		
+
+Afternoon:
+-----------
+producer - multiple instances  - ribbon here is not needed
+consumer - use Ribbon at this side as there are multiple producer insatnces and use
+private LoadBalancerClient loadBalancer;
+
+
+
+
+
+SQL    , NoSQL
+-------------------
+to read unstructured data , here we are going to use mongoDB
+no ACID theory in mongoDB
+data will be stored as JSON
+
+db------------db
+tble----------------collection
+
+
+commands for starting mongoDB
+----------------------------------
+1) go to bin of MongoDB --cmd--- mongoD
+create data folder>db folder in c drive
+2) bin of MongoDB --cmd ->mongo
+3)show dbs
+4)use microservices //creating database
+>db
+
+mongoRepository is responsible for running mongoDB 
+
+
+
+>db.createCollection("employee")
+>show collections
+
+>db.employee.insert([{name:'lavanya',city:'Hyderabad',email:'lavanyagmail.com'}])
+>bd.employee.find().pretty()
+>db.employee.find({name:"lavanya"}).pretty()
+
+
+
+
+
+
+
+
+
+package com.firstproject2.repositories;
+
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class EmployeeRepository  extends MongoRepository<microservices,String>{
+
+}
+
+
+March 29 2k19:
+---------------------------------
+
+JTA transaction
+
+Architecture1:
+-----
+
+						consumers1 			consumers2 				consumers3
+				-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-
+
+Edge server (eureka)|
+proxy and routing   |                      Load balancer           OAuth2 SSO       API GateWay
+
+
+OAuth2 auth server		API Services																Service Discovery
+
+Configuration Server																	Circuit Breaker
+
+Load Balancer																			Monitorin Dashboard
+
+
+
+Ribbon is on service. If any failure of service... Hystrix will handle. so HYSTRIX  has to be written on services
+Maintaining Hystrix: producer files
+----
+pom.xml
+properties
+main class
+
+Zuul :
+To route and authenticate 
+
+pom.xml
+properties
+main class
+bootstratp.properties
+
+
+Add 4 filter classes each etends ZuulFilter
+pre ,post,error and routeFilters
+
+till now consumer--> Eureka-->Producer and eurelka is redirecting .
+NOw our req should go to Zuul
+In consumer - > we have to go to Zuul instead of Eureka
+
+eureka, producer ,zuul ,consumer
+
+
+Java Message Services(JMS):
+-------------
+point to point communication -> using Queue concpet;
+publisher subscrier communications->Topic(bunch of queue) concept;
+
+one micro service can produce one message and n services can use it. In this training, we se on TOPIC.
+Connection Factory.
+Where to configuring QUEUE and TOPIC? Till now we use JBOSS.
+Here we have to use KAFKA for configuring .Inside KAFKA who is managing message? ZOOKEAPER.
+
+JMS Architecture:
+-----------
+for producer:
+-------
+ConnecctionFactory---->Connection interface----> create session for working-->using sessions we have to create message publisher,message--->
+message publisher uses SEND() to send message to particular queue.
+
+for consumer:
+--------
+ConnecctionFactory---->Connection interface----> create session for working-->using sessions we have to create message receiver -->this if uses receive() [Synchronus way] , onMessage() [Aysnc way]
+
+
+using pool() in kafka we can read commit log.
+cold stream and hot stream.
+Live video - hot stream
+cold stream - stop point is stored, but we can view from first always
+
+Async way means there will be a mediator.In synch direct communication b/w sender and reciever
+
+
+
+
+connecting to Kafka:
+cmd at bin>windows> of kafka
+zookeeper-server-start.bat ../../config/zookeeper.properties
+other cmd at bin>windows of kafka
+kafka-server-start.bat ../../config/server.properties
+
+
+if its not started so
+set classpath=%classpath%;.;
+
+kafka using spring:
+
+spring integration:
+
+there will be a gateway between producer and consumer.
+
+producer will use gateway and sends data to inputpool.
+From here data comes to poolable
+consumer will consume data using outputpool from poolable
+
+https://github.com/upadhyay-rajesh/adp
+
+how to use kafka in microservices:
+-----------
+1.pom.xml
+2.application.yaml
+3.no change in main file
+config kafka
+bind channel
+
+Kafka configuration done
+create controller
+create entity file
+create service
+create listener
+executre and njoyyyyyyyyyyyy!!
+
+Basic requirement of microservices is statelessness.
+
+AWS.amazon.console
+
+AWS account ceration
+day 3:
+----------
+
+creating VM and opening form local machine
+Approches:
+EC2
+		Elastic Bean stalk in AWS is our project is pushed and worked
+Elastic load balancer ELB
+ECS Elastic container servicer -security load balancing
+API Gateway and lamda(serverless) 
+
+
+
+principles
+1.API to API
+2.Use right tools
+3.secure your service
+4. Be a good citizen with in ecosystem
+5.Automate everything
+OAuth2 project in microservices folder of desktop:
+localhost/8080/ui
+
+
+How to install docker and run microservices:
+
+
+1.install vm
+2.install centos inside oracle vm using image
+3. we have to install docker - docker will provide infrastructure . It will manage 100s of microservcies
+4.using yam install docker as sudo
+5.start docker in vm and project folder 
+>systemCtl start docker
+6. to deploye Producer and consumer microservices , in both we have to add one file.Dockerfile without any extension in line of src. In this file we will write commands
+From tomcat XXX version
+RUN rm  /usr/local/tomcat/webapps/*
+COPY ./target/employee.producer-0.0.1-SNAPSHOT.war  /usr/local.tomcat/webapps/ROOT.war       //from local to docker
+CMD ["catalina.sh","run"]
+7.go inside project in docker vm and  run 
+>docker image build -t employee-producer .
+Dot in last is important
+8.run the following and check log for server start
+>docker container logs lb
+9.open in browser of windows
+localhost/8080/employee. ntg comes as this will run in same vm docker image
+If we open same url in vm we can see response jsin
+But we want to use url in any network
+
+so write below cmd
+>docker container run -p 8080:8080 -d employee-producer
+the above one will bypass and will be able to access from normol browser
+
+
+dropbox.com
+----------
+upadhyay.rajesh@rediffmail.com
+rajesh777
+
+www.rkcpinfo.com
+
+
+
+Redis
+to maintain sessions
+install redis 
+inside pom of microservice you want use a sring session dependency
+For this we have to  create configu server project and gate way project
+
+goto config server project:
+pom.xml
+add dependency , spring-boot-starter-data-redis
+
+hateoas - one url peform CRUD operations. It came only after REST came.
+HATEOAS (Hypermedia as the Engine of Application State) is a constraint of the REST application architecture. A hypermedia-driven site provides information to navigate the site's REST interfaces dynamically by including hypermedia links with the responses.
+
+in gateway project
+add bootstrap.yaml 
+redisExample folder
+
+
+
+jdk 9
+
+
+AWS uname/pswd:
+Administrator
+hZ@2Uh4RBAR
+
+
+Lavanya.pem file for aws key while creating instance
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
